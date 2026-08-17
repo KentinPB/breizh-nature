@@ -1,0 +1,18 @@
+/*
+Theme Name: Breizh Nature
+Description: Thème sur-mesure pour le portail des activités nature en Bretagne, développé manuellement.
+Author: Kentin.PB
+Version: 1.0
+Text Domain: breizh-nature
+*/
+
+/*
+==========================================================================
+   Base CSS (Le style de votre site commencera ici plus tard)
+==========================================================================
+*/
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
