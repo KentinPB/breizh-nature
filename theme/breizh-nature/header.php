@@ -14,8 +14,13 @@
     <p><?php bloginfo('description'); ?></p>
 
     <nav class="main-navigation">
-        <p><i>(Menu principal à venir)</i></p>
-    </nav>
+        <?php
+        wp_nav_menu(array(
+                'theme_location' => 'menu-principal',
+                'container_nav' => 'nav',
+                'menu_class' => 'main-menu',
+        ));
+        ?>    </nav>
 </header>
 
 <main class="site-main">
