@@ -21,9 +21,10 @@ require_once BNR_PLUGIN_DIR . 'includes/base-de-donnees.php';
 require_once BNR_PLUGIN_DIR . 'includes/formulaire.php';
 require_once BNR_PLUGIN_DIR . 'includes/admin-reservations.php';
 require_once BNR_PLUGIN_DIR . 'includes/dashboard.php';
+require_once BNR_PLUGIN_DIR . 'includes/roles.php';
 
 // Script d'injection de test (À commenter une fois terminé)
-// require_once BNR_PLUGIN_DIR . 'includes/seeder.php';
+require_once BNR_PLUGIN_DIR . 'includes/seeder.php';
 
 // 2. Hook d'activation (Appelle la fonction située dans base-de-donnees.php)
 register_activation_hook( __FILE__, 'bnr_activate_plugin' );

@@ -9,7 +9,7 @@ function bnr_add_admin_menu() {
         'edit.php?post_type=activite', // Se place sous le menu du CPT "Activités"
         'Gestion des réservations',    // Titre de la page web
         'Réservations',                // Titre dans le menu de gauche
-        'manage_options',              // Droits requis
+        'manage_reservations',              // Droits requis
         'bnr-reservations',            // Slug de l'URL
         'bnr_render_admin_page'        // Fonction d'affichage
     );

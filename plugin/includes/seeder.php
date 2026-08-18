@@ -1,11 +1,15 @@
 <?php
-// Fichier : includes/seeder.php
-
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Sécurité
 }
 
-function bnr_injecter_activites_test() {
+/**
+ * ====================================================================
+ * SCRIPT D'INJECTION D'ACTIVITÉS (FIXTURES)
+ * À supprimer ou commenter une fois l'injection réussie !
+ * ====================================================================
+ */
+/*function bnr_injecter_activites_test() {
     if ( get_option( 'bnr_donnees_test_injectees' ) ) {
         return;
     }
@@ -62,4 +66,51 @@ function bnr_injecter_activites_test() {
 
     update_option( 'bnr_donnees_test_injectees', true );
 }
-add_action( 'admin_init', 'bnr_injecter_activites_test' );
+add_action( 'admin_init', 'bnr_injecter_activites_test' );*/
+
+/**
+ * ====================================================================
+ * SCRIPT D'INJECTION DE COMPTES UTILISATEURS (FIXTURES)
+ * À supprimer ou commenter une fois l'injection réussie !
+ * ====================================================================
+ */
+function bnr_injecter_comptes_test() {
+
+    // Notre catalogue de comptes de test
+    $comptes_test = array(
+        array(
+            'user_login' => 'jean_gestionnaire',
+            'user_pass'  => 'BreizhNature2026!', // Mot de passe commun pour vos tests
+            'user_email' => 'jean.gestionnaire@breizhnature.local',
+            'first_name' => 'Jean',
+            'last_name'  => 'Dupont',
+            'role'       => 'gestionnaire' // Le profil avec accès limité que nous avons créé
+        ),
+        array(
+            'user_login' => 'marie_gestionnaire',
+            'user_pass'  => 'BreizhNature2026!',
+            'user_email' => 'marie.gestionnaire@breizhnature.local',
+            'first_name' => 'Marie',
+            'last_name'  => 'Martin',
+            'role'       => 'gestionnaire'
+        )
+    );
+
+    // Boucle d'insertion
+    foreach ( $comptes_test as $compte ) {
+
+        // Sécurité : On vérifie que l'email ou l'identifiant n'existe pas déjà
+        if ( ! get_user_by( 'email', $compte['user_email'] ) && ! get_user_by( 'login', $compte['user_login'] ) ) {
+
+            // Création de l'utilisateur
+            $user_id = wp_insert_user( $compte );
+
+            // Gestion visuelle d'une éventuelle erreur (optionnel mais utile en développement)
+            if ( is_wp_error( $user_id ) ) {
+                error_log( 'Erreur création fixture utilisateur : ' . $user_id->get_error_message() );
+            }
+        }
+    }
+}
+// Le hook 'admin_init' lance le script dès que vous ouvrez l'administration
+add_action( 'admin_init', 'bnr_injecter_comptes_test' );
