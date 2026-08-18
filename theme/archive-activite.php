@@ -11,34 +11,49 @@ get_header(); ?>
         </header>
 
         <section class="activites-filters">
-            <form id="activites-filter-form" method="GET" action="<?php echo esc_url( get_post_type_archive_link( 'activite' ) ); ?>" class="filtre-form" style="display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
+            <form id="activites-filter-form" method="GET" action="<?php echo esc_url( get_post_type_archive_link( 'activite' ) ); ?>" class="filtre-form">
+                <div class="filter-field filter-select">
+                    <label for="filter-type">Type</label>
+                    <select id="filter-type" name="type_activite">
+                        <option value="">Tous les types</option>
+                        <?php
+                        $types = get_terms( array( 'taxonomy' => 'type_activite', 'hide_empty' => true ) );
+                        foreach ( $types as $type ) {
+                            $selected = ( isset( $_GET['type_activite'] ) && $_GET['type_activite'] === $type->slug ) ? 'selected' : '';
+                            echo '<option value="' . esc_attr( $type->slug ) . '" ' . $selected . '>' . esc_html( $type->name ) . '</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
 
-                <select name="type_activite">
-                    <option value="">Tous les types</option>
-                    <?php
-                    $types = get_terms( array( 'taxonomy' => 'type_activite', 'hide_empty' => true ) );
-                    foreach ( $types as $type ) {
-                        $selected = ( isset( $_GET['type_activite'] ) && $_GET['type_activite'] === $type->slug ) ? 'selected' : '';
-                        echo '<option value="' . esc_attr( $type->slug ) . '" ' . $selected . '>' . esc_html( $type->name ) . '</option>';
-                    }
-                    ?>
-                </select>
+                <div class="filter-field filter-select">
+                    <label for="filter-niveau">Niveau</label>
+                    <select id="filter-niveau" name="niveau">
+                        <option value="">Tous les niveaux</option>
+                        <?php
+                        $niveaux = get_terms( array( 'taxonomy' => 'niveau_difficulte', 'hide_empty' => true ) );
+                        foreach ( $niveaux as $niveau ) {
+                            $selected = ( isset( $_GET['niveau'] ) && $_GET['niveau'] === $niveau->slug ) ? 'selected' : '';
+                            echo '<option value="' . esc_attr( $niveau->slug ) . '" ' . $selected . '>' . esc_html( $niveau->name ) . '</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
 
-                <select name="niveau">
-                    <option value="">Tous les niveaux</option>
-                    <?php
-                    $niveaux = get_terms( array( 'taxonomy' => 'niveau_difficulte', 'hide_empty' => true ) );
-                    foreach ( $niveaux as $niveau ) {
-                        $selected = ( isset( $_GET['niveau'] ) && $_GET['niveau'] === $niveau->slug ) ? 'selected' : '';
-                        echo '<option value="' . esc_attr( $niveau->slug ) . '" ' . $selected . '>' . esc_html( $niveau->name ) . '</option>';
-                    }
-                    ?>
-                </select>
+                <div class="filter-field filter-date">
+                    <label for="filter-date">Date</label>
+                    <input id="filter-date" type="date" name="date_activite" value="<?php echo isset( $_GET['date_activite'] ) ? esc_attr( $_GET['date_activite'] ) : ''; ?>" title="Activités à partir de cette date">
+                </div>
 
-                <input type="date" name="date_activite" value="<?php echo isset( $_GET['date_activite'] ) ? esc_attr( $_GET['date_activite'] ) : ''; ?>" title="Activités à partir de cette date">
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="afficher_terminees" value="1" <?php checked( isset( $_GET['afficher_terminees'] ) ); ?>>
+                    Afficher les activités terminées
+                </label>
 
-                <button type="submit" class="button">Rechercher</button>
-                <a href="<?php echo esc_url( get_post_type_archive_link( 'activite' ) ); ?>" class="button button-secondary">Réinitialiser</a>
+                <div class="filter-actions">
+                    <button type="submit" class="button">Rechercher</button>
+                    <a href="<?php echo esc_url( get_post_type_archive_link( 'activite' ) ); ?>" class="button button-secondary">Réinitialiser</a>
+                </div>
             </form>
         </section>
 
@@ -57,8 +72,15 @@ get_header(); ?>
             if ( ! empty( $_GET['niveau'] ) ) {
                 $args['tax_query'][] = array( 'taxonomy' => 'niveau_difficulte', 'field' => 'slug', 'terms' => sanitize_text_field( $_GET['niveau'] ) );
             }
+
+            // NOUVELLE LOGIQUE DE FILTRAGE PAR DATE ET STATUT
+            $aujourdhui = date('Y-m-d');
             if ( ! empty( $_GET['date_activite'] ) ) {
+                // Recherche stricte sur une date donnée
                 $args['meta_query'][] = array( 'key' => '_activite_date', 'value' => sanitize_text_field( $_GET['date_activite'] ), 'compare' => '>=', 'type' => 'DATE' );
+            } elseif ( empty( $_GET['afficher_terminees'] ) ) {
+                // Par défaut (case NON cochée) : on ne montre que les activités à venir
+                $args['meta_query'][] = array( 'key' => '_activite_date', 'value' => $aujourdhui, 'compare' => '>=', 'type' => 'DATE' );
             }
 
             $query_filtree = new WP_Query( $args );
@@ -81,29 +103,37 @@ get_header(); ?>
                     ) );
 
                     $places_restantes = $places_max > 0 ? max( 0, $places_max - $places_reservees ) : 0;
-                    $aujourdhui       = date( 'Y-m-d' );
+                    $aujourdhui_calc  = date( 'Y-m-d' );
 
-                    // LOGIQUE VISUELLE DU CYCLE DE VIE
                     $badge_text  = 'Ouvert';
-                    $badge_color = '#28a745'; // Vert par défaut
+                    $badge_color = '#28a745';
 
-                    if ( ! empty( $date_debut ) && $aujourdhui > $date_debut ) {
+                    if ( ! empty( $date_debut ) && $aujourdhui_calc > $date_debut ) {
                         $badge_text  = 'Terminée';
-                        $badge_color = '#6c757d'; // Gris
-                    } elseif ( ! empty( $date_limite ) && $aujourdhui > $date_limite ) {
+                        $badge_color = '#6c757d';
+                    } elseif ( ! empty( $date_limite ) && $aujourdhui_calc > $date_limite ) {
                         $badge_text  = 'Inscriptions closes';
-                        $badge_color = '#dc3545'; // Rouge
+                        $badge_color = '#dc3545';
                     } elseif ( $places_max > 0 && $places_restantes <= 0 ) {
                         $badge_text  = 'Complet';
-                        $badge_color = '#fd7e14'; // Orange
+                        $badge_color = '#fd7e14';
+                    }
+
+                    // VÉRIFICATION : Le visiteur actuel est-il inscrit ?
+                    $est_inscrit = false;
+                    if ( is_user_logged_in() ) {
+                        $current_user = wp_get_current_user();
+                        $inscription = $wpdb->get_var( $wpdb->prepare(
+                                "SELECT id FROM $table_reservations WHERE activite_id = %d AND email = %s AND statut IN ('Acceptée', 'En attente')",
+                                get_the_ID(), $current_user->user_email
+                        ) );
+                        if ( $inscription ) { $est_inscrit = true; }
                     }
                     ?>
 
-                    <!-- Ajout de "position: relative;" pour placer le badge absolu -->
                     <article id="post-<?php the_ID(); ?>" <?php post_class('activite-card'); ?> style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; position: relative;">
 
-                        <!-- LE BADGE D'ÉTAT -->
-                        <span style="position: absolute; top: 15px; right: 15px; background-color: <?php echo esc_attr( $badge_color ); ?>; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 1;">
+                    <span style="position: absolute; top: 15px; right: 15px; background-color: <?php echo esc_attr( $badge_color ); ?>; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 1;">
                         <?php echo esc_html( $badge_text ); ?>
                     </span>
 

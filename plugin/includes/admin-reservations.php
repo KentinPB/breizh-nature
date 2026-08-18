@@ -84,7 +84,7 @@ function bnr_render_admin_page() {
                                 <?php
                                 // Code couleur dynamique pour faciliter la lecture du gestionnaire
                                 if( $resa->statut === 'Acceptée' ) echo '<span style="color:green;">' . esc_html($resa->statut) . '</span>';
-                                elseif( $resa->statut === 'Refusée' ) echo '<span style="color:red;">' . esc_html($resa->statut) . '</span>';
+                                elseif( $resa->statut === 'Annulée' || $resa->statut === 'Refusée' ) echo '<span style="color:red;">' . esc_html($resa->statut) . '</span>';
                                 else echo '<span style="color:orange;">' . esc_html($resa->statut) . '</span>';
                                 ?>
                             </strong>
@@ -99,6 +99,7 @@ function bnr_render_admin_page() {
                                     <option value="En attente" <?php selected( $resa->statut, 'En attente' ); ?>>En attente</option>
                                     <option value="Acceptée" <?php selected( $resa->statut, 'Acceptée' ); ?>>Acceptée</option>
                                     <option value="Refusée" <?php selected( $resa->statut, 'Refusée' ); ?>>Refusée</option>
+                                    <option value="Annulée" <?php selected( $resa->statut, 'Annulée' ); ?>>Annulée</option>
                                 </select>
                                 <button type="submit" class="button button-small">OK</button>
                             </form>

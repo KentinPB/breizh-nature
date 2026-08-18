@@ -6,9 +6,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 function bnr_add_dashboard_widgets() {
     wp_add_dashboard_widget(
-        'bnr_stats_widget',                   // ID du widget
-        'Statistiques Breizh\'Nature',        // Titre affiché
-        'bnr_render_dashboard_widget'         // Fonction d'affichage
+            'bnr_stats_widget',                   // ID du widget
+            'Statistiques Breizh\'Nature',        // Titre affiché
+            'bnr_render_dashboard_widget'         // Fonction d'affichage
     );
 }
 add_action( 'wp_dashboard_setup', 'bnr_add_dashboard_widgets' );
@@ -26,25 +26,28 @@ function bnr_render_dashboard_widget() {
 
     // Statistique 2 : Nombre d'activités à venir (Date supérieure ou égale à aujourd'hui)
     $args_avenir = array(
-        'post_type'   => 'activite',
-        'post_status' => 'publish',
-        'meta_query'  => array(
-            array(
-                'key'     => '_activite_date',
-                'value'   => date('Y-m-d'),
-                'compare' => '>=',
-                'type'    => 'DATE'
+            'post_type'   => 'activite',
+            'post_status' => 'publish',
+            'meta_query'  => array(
+                    array(
+                            'key'     => '_activite_date',
+                            'value'   => date('Y-m-d'),
+                            'compare' => '>=',
+                            'type'    => 'DATE'
+                    )
             )
-        )
     );
     $query_avenir = new WP_Query( $args_avenir );
     $activites_avenir = $query_avenir->found_posts;
 
-    // Statistique 3 : Réservations en attente (Requête SQL directe ultra-rapide)[cite: 1]
+    // Statistique 3 : Réservations en attente[cite: 2]
     $resa_attente = $wpdb->get_var( "SELECT COUNT(*) FROM $table_name WHERE statut = 'En attente'" );
 
-    // Statistique 4 : Réservations acceptées[cite: 1]
+    // Statistique 4 : Réservations acceptées[cite: 2]
     $resa_acceptees = $wpdb->get_var( "SELECT COUNT(*) FROM $table_name WHERE statut = 'Acceptée'" );
+
+    // NOUVEAU - Statistique 5 : Réservations refusées (par l'admin) ou annulées (par le client)
+    $resa_annulees = $wpdb->get_var( "SELECT COUNT(*) FROM $table_name WHERE statut IN ('Annulée', 'Refusée')" );
 
     // Affichage HTML du Widget
     ?>
@@ -57,8 +60,9 @@ function bnr_render_dashboard_widget() {
 
         <p><strong>📅 Côté Réservations :</strong></p>
         <ul style="margin-left: 20px; list-style-type: square;">
-            <li>Demandes en attente : <strong style="color: orange;"><?php echo esc_html( $resa_attente ); ?></strong></li>
-            <li>Réservations acceptées : <strong style="color: green;"><?php echo esc_html( $resa_acceptees ); ?></strong></li>
+            <li>Demandes en attente : <strong style="color: #fd7e14;"><?php echo esc_html( $resa_attente ); ?></strong></li>
+            <li>Réservations acceptées : <strong style="color: #28a745;"><?php echo esc_html( $resa_acceptees ); ?></strong></li>
+            <li>Réservations annulées/refusées : <strong style="color: #dc3545;"><?php echo esc_html( $resa_annulees ); ?></strong></li>
         </ul>
 
         <hr>
