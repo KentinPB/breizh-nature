@@ -74,7 +74,7 @@ add_action( 'admin_init', 'bnr_injecter_activites_test' );*/
  * À supprimer ou commenter une fois l'injection réussie !
  * ====================================================================
  */
-function bnr_injecter_comptes_test() {
+/*function bnr_injecter_comptes_test() {
 
     // Notre catalogue de comptes de test
     $comptes_test = array(
@@ -113,4 +113,4 @@ function bnr_injecter_comptes_test() {
     }
 }
 // Le hook 'admin_init' lance le script dès que vous ouvrez l'administration
-add_action( 'admin_init', 'bnr_injecter_comptes_test' );
+add_action( 'admin_init', 'bnr_injecter_comptes_test' );*/
