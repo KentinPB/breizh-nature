@@ -20,6 +20,7 @@ require_once BNR_PLUGIN_DIR . 'includes/metaboxes.php';
 require_once BNR_PLUGIN_DIR . 'includes/base-de-donnees.php';
 require_once BNR_PLUGIN_DIR . 'includes/formulaire.php';
 require_once BNR_PLUGIN_DIR . 'includes/admin-reservations.php';
+require_once BNR_PLUGIN_DIR . 'includes/dashboard.php';
 
 // Script d'injection de test (À commenter une fois terminé)
 // require_once BNR_PLUGIN_DIR . 'includes/seeder.php';
