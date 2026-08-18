@@ -201,3 +201,159 @@ function bnr_save_activite_meta( $post_id ) {
     }
 }
 add_action( 'save_post_activite', 'bnr_save_activite_meta' );
+
+/**
+ * 5. Création de la table de base de données à l'activation du plugin
+ */
+function bnr_activate_plugin() {
+    global $wpdb;
+
+    // Nom de la table avec le préfixe de WordPress (ex: wp_bnr_reservations)
+    $table_name = $wpdb->prefix . 'reservations';
+    $charset_collate = $wpdb->get_charset_collate();
+
+    // Requête SQL pour créer la table selon le cahier des charges
+    $sql = "CREATE TABLE $table_name (
+        id mediumint(9) NOT NULL AUTO_INCREMENT,
+        activite_id bigint(20) NOT NULL,
+        nom varchar(100) NOT NULL,
+        prenom varchar(100) NOT NULL,
+        email varchar(100) NOT NULL,
+        telephone varchar(20) NOT NULL,
+        participants int(5) NOT NULL,
+        commentaire text,
+        statut varchar(20) DEFAULT 'En attente' NOT NULL,
+        date_creation datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        PRIMARY KEY  (id)
+    ) $charset_collate;";
+
+    // dbDelta nécessite ce fichier natif
+    require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+
+    // Exécution sécurisée
+    dbDelta( $sql );
+}
+// Le hook d'activation de WordPress
+register_activation_hook( __FILE__, 'bnr_activate_plugin' );
+
+/**
+ * 6. Création du formulaire HTML (Shortcode)
+ */
+function bnr_render_reservation_form() {
+    ob_start(); // Début de la temporisation de l'affichage
+
+    // Affichage des messages de confirmation ou d'erreur
+    if ( isset( $_GET['reservation'] ) ) {
+        if ( $_GET['reservation'] === 'success' ) {
+            echo '<p style="color: green; font-weight: bold;">✅ Votre demande de réservation a bien été envoyée. Nous vous recontacterons vite !</p>';
+        } elseif ( $_GET['reservation'] === 'error' ) {
+            echo '<p style="color: red; font-weight: bold;">❌ Une erreur est survenue. Veuillez vérifier votre saisie.</p>';
+        }
+    }
+
+    // Le formulaire HTML avec les champs exigés par le cahier des charges
+    ?>
+    <form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="POST" class="bnr-form">
+
+        <!-- Sécurité : Le nonce protège contre les failles CSRF -->
+        <?php wp_nonce_field( 'bnr_submit_reservation', 'bnr_reservation_nonce' ); ?>
+
+        <!-- Action cachée pour dire à WordPress quelle fonction PHP appeler -->
+        <input type="hidden" name="action" value="bnr_process_reservation">
+        <input type="hidden" name="activite_id" value="<?php echo get_the_ID(); ?>">
+
+        <div>
+            <label for="nom">Nom *</label><br>
+            <input type="text" id="nom" name="nom" required>
+        </div>
+        <br>
+        <div>
+            <label for="prenom">Prénom *</label><br>
+            <input type="text" id="prenom" name="prenom" required>
+        </div>
+        <br>
+        <div>
+            <label for="email">Adresse e-mail *</label><br>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <br>
+        <div>
+            <label for="telephone">Téléphone *</label><br>
+            <input type="tel" id="telephone" name="telephone" required>
+        </div>
+        <br>
+        <div>
+            <label for="participants">Nombre de participants *</label><br>
+            <input type="number" id="participants" name="participants" min="1" value="1" required>
+        </div>
+        <br>
+        <div>
+            <label for="commentaire">Commentaire</label><br>
+            <textarea id="commentaire" name="commentaire" rows="4"></textarea>
+        </div>
+        <br>
+        <button type="submit">Envoyer ma demande</button>
+    </form>
+    <?php
+
+    return ob_get_clean(); // Retourne le HTML généré
+}
+// On déclare ce formulaire comme un "shortcode" utilisable partout avec [bnr_reservation]
+add_shortcode( 'bnr_reservation', 'bnr_render_reservation_form' );
+
+
+/**
+ * 7. Traitement et nettoyage des données envoyées par le formulaire
+ */
+function bnr_process_reservation() {
+    // Étape 1 : Sécurité - Vérification du nonce (faille CSRF)
+    if ( ! isset( $_POST['bnr_reservation_nonce'] ) || ! wp_verify_nonce( $_POST['bnr_reservation_nonce'], 'bnr_submit_reservation' ) ) {
+        wp_die( 'Erreur de sécurité (Nonce invalide).' );
+    }
+
+    // Étape 2 : Nettoyage strict des données (Sanitization pour éviter les failles XSS/SQL)
+    $activite_id  = isset( $_POST['activite_id'] ) ? intval( $_POST['activite_id'] ) : 0;
+    $nom          = isset( $_POST['nom'] ) ? sanitize_text_field( $_POST['nom'] ) : '';
+    $prenom       = isset( $_POST['prenom'] ) ? sanitize_text_field( $_POST['prenom'] ) : '';
+    $email        = isset( $_POST['email'] ) ? sanitize_email( $_POST['email'] ) : '';
+    $telephone    = isset( $_POST['telephone'] ) ? sanitize_text_field( $_POST['telephone'] ) : '';
+    $participants = isset( $_POST['participants'] ) ? intval( $_POST['participants'] ) : 1;
+    $commentaire  = isset( $_POST['commentaire'] ) ? sanitize_textarea_field( $_POST['commentaire'] ) : '';
+
+    // Étape 3 : Vérification finale avant insertion
+    if ( empty( $nom ) || empty( $prenom ) || ! is_email( $email ) ) {
+        // Redirection avec erreur
+        wp_redirect( add_query_arg( 'reservation', 'error', wp_get_referer() ) );
+        exit;
+    }
+
+    // Étape 4 : Insertion sécurisée (requête préparée) dans la table SQL
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'bnr_reservations';
+
+    $inserted = $wpdb->insert(
+            $table_name,
+            array(
+                    'activite_id'  => $activite_id,
+                    'nom'          => $nom,
+                    'prenom'       => $prenom,
+                    'email'        => $email,
+                    'telephone'    => $telephone,
+                    'participants' => $participants,
+                    'commentaire'  => $commentaire,
+                    'statut'       => 'En attente'
+            ),
+            array( '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ) // Type de données (d=entier, s=chaîne)
+    );
+
+    // Étape 5 : Redirection
+    if ( $inserted ) {
+        wp_redirect( add_query_arg( 'reservation', 'success', wp_get_referer() ) );
+    } else {
+        wp_redirect( add_query_arg( 'reservation', 'error', wp_get_referer() ) );
+    }
+    exit;
+}
+// Déclaration des hooks natifs pour intercepter le formulaire
+add_action( 'admin_post_nopriv_bnr_process_reservation', 'bnr_process_reservation' ); // Pour les visiteurs non connectés
+add_action( 'admin_post_bnr_process_reservation', 'bnr_process_reservation' ); // Pour les utilisateurs connectés

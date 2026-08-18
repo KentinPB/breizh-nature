@@ -64,9 +64,12 @@ get_header(); ?>
                         <!-- Emplacement pour le futur formulaire de réservation du plugin -->
                         <div class="activite-reservation-box">
                             <?php
-                            // C'est ici que notre futur plugin injectera le formulaire !
-                            // Pour l'instant, on laisse un espace vide ou un commentaire.
-                            echo '<!-- Formulaire de réservation (généré par le plugin) -->';
+                            // Si le shortcode existe (si le plugin est activé), on affiche le formulaire
+                            if ( shortcode_exists( 'bnr_reservation' ) ) {
+                                echo do_shortcode( '[bnr_reservation]' );
+                            } else {
+                                echo '<p><em>Les réservations sont temporairement indisponibles.</em></p>';
+                            }
                             ?>
                         </div>
                     </aside>
