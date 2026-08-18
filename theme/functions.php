@@ -46,18 +46,42 @@ function bnr_ajax_filter_activites() {
             $date_debut  = get_post_meta( get_the_ID(), '_activite_date', true );
             $heure_debut = get_post_meta( get_the_ID(), '_activite_heure', true );
             $date_limite = get_post_meta( get_the_ID(), '_activite_date_limite', true );
-            $places_max  = get_post_meta( get_the_ID(), '_activite_places', true );
+            $places_max  = intval( get_post_meta( get_the_ID(), '_activite_places', true ) );
 
             global $wpdb;
-            $table_reservations = $wpdb->prefix . 'bnr_reservations';
-            $places_reservees   = $wpdb->get_var( $wpdb->prepare(
+            $table_reservations = $wpdb->prefix . 'reservations';
+            $places_reservees   = (int) $wpdb->get_var( $wpdb->prepare(
                 "SELECT SUM(participants) FROM $table_reservations WHERE activite_id = %d AND statut = 'Acceptée'",
                 get_the_ID()
             ) );
-            $places_reservees = $places_reservees ? intval( $places_reservees ) : 0;
+
+            $places_restantes = $places_max > 0 ? max( 0, $places_max - $places_reservees ) : 0;
+            $aujourdhui       = date( 'Y-m-d' );
+
+            // LOGIQUE VISUELLE DU CYCLE DE VIE
+            $badge_text  = 'Ouvert';
+            $badge_color = '#28a745';
+
+            if ( ! empty( $date_debut ) && $aujourdhui > $date_debut ) {
+                $badge_text  = 'Terminée';
+                $badge_color = '#6c757d';
+            } elseif ( ! empty( $date_limite ) && $aujourdhui > $date_limite ) {
+                $badge_text  = 'Inscriptions closes';
+                $badge_color = '#dc3545';
+            } elseif ( $places_max > 0 && $places_restantes <= 0 ) {
+                $badge_text  = 'Complet';
+                $badge_color = '#fd7e14';
+            }
             ?>
-            <article class="activite-card" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px;">
-                <h2 class="activite-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
+
+            <article class="activite-card" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; position: relative;">
+
+                <!-- LE BADGE D'ÉTAT -->
+                <span style="position: absolute; top: 15px; right: 15px; background-color: <?php echo esc_attr( $badge_color ); ?>; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 1;">
+                    <?php echo esc_html( $badge_text ); ?>
+                </span>
+
+                <h2 class="activite-title" style="padding-right: 120px;"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
                 <div class="activite-meta-preview">
                     <?php
                     echo '<span>🏷️ ' . strip_tags( get_the_term_list( get_the_ID(), 'type_activite', '', ', ' ) ) . '</span> | ';
@@ -91,5 +115,6 @@ function bnr_ajax_filter_activites() {
     wp_reset_postdata();
     wp_die();
 }
+
 add_action( 'wp_ajax_filter_activites', 'bnr_ajax_filter_activites' );
 add_action( 'wp_ajax_nopriv_filter_activites', 'bnr_ajax_filter_activites' );
