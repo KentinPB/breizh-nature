@@ -12,8 +12,7 @@ get_header(); ?>
 
         <!-- 1. Le formulaire de filtrage -->
         <section class="activites-filters">
-            <form method="GET" action="<?php echo esc_url( get_post_type_archive_link( 'activite' ) ); ?>" class="filtre-form" style="display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
-
+            <form id="activites-filter-form" method="GET" action="<?php echo esc_url( get_post_type_archive_link( 'activite' ) ); ?>" class="filtre-form" style="display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
                 <!-- Filtre : Type d'activité -->
                 <select name="type_activite">
                     <option value="">Tous les types</option>
@@ -47,7 +46,7 @@ get_header(); ?>
         </section>
 
         <!-- 2. Traitement de la requête et affichage des résultats -->
-        <div class="activites-grid">
+        <div id="activites-results-container" class="activites-grid">
             <?php
             // Préparation des filtres de la requête
             $args = array(
