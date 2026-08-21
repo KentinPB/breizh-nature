@@ -22,6 +22,7 @@ require_once BNR_PLUGIN_DIR . 'includes/formulaire.php';
 require_once BNR_PLUGIN_DIR . 'includes/admin-reservations.php';
 require_once BNR_PLUGIN_DIR . 'includes/dashboard.php';
 require_once BNR_PLUGIN_DIR . 'includes/roles.php';
+require_once BNR_PLUGIN_DIR . 'includes/api-rest.php';
 
 // Script d'injection de test (À commenter une fois terminé)
 require_once BNR_PLUGIN_DIR . 'includes/seeder.php';
