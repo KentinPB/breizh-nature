@@ -29,6 +29,8 @@ get_header(); ?>
                 </header>
 
                 <div class="single-activite-layout">
+
+                    <!-- Colonne de gauche (Contenu) -->
                     <div class="single-activite-content">
                         <?php if ( has_post_thumbnail() ) : ?>
                             <div class="activite-image">
@@ -42,6 +44,7 @@ get_header(); ?>
                         </div>
                     </div>
 
+                    <!-- Colonne de droite (Sidebar Sticky) -->
                     <aside class="single-activite-sidebar">
                         <div class="infos-pratiques info-panel">
                             <h3>Informations pratiques</h3>
@@ -60,6 +63,7 @@ get_header(); ?>
                             <?php echo do_shortcode( '[bnr_reservation]' ); ?>
                         </div>
                     </aside>
+
                 </div>
             </article>
 

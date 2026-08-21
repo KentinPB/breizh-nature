@@ -14,14 +14,20 @@
 <header class="site-header" role="banner">
     <div class="header-container" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #eaeaea;">
 
-        <div class="site-logo">
+        <div class="site-logo" style="display: flex; align-items: center; gap: 15px;">
             <?php
+            // 1. On affiche le logo personnalisé s'il a été défini dans l'administration
             if ( has_custom_logo() ) {
                 the_custom_logo();
-            } else {
-                echo '<h1><a href="' . esc_url( home_url( '/' ) ) . '" style="text-decoration:none; color:#2e7d32;">' . get_bloginfo( 'name' ) . '</a></h1>';
             }
+
+            // 2. On affiche TOUJOURS le titre du site juste à côté
             ?>
+            <h1 style="margin: 0;">
+                <a href="<?php echo esc_url( home_url( '/' ) ); ?>" style="text-decoration:none; color:#2e7d32;">
+                    <?php bloginfo( 'name' ); ?>
+                </a>
+            </h1>
         </div>
 
         <nav id="site-navigation" class="main-navigation" role="navigation" aria-label="Menu principal">

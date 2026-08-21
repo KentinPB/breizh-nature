@@ -153,3 +153,68 @@ function bnr_ajax_filter_activites() {
 }
 add_action( 'wp_ajax_filter_activites', 'bnr_ajax_filter_activites' );
 add_action( 'wp_ajax_nopriv_filter_activites', 'bnr_ajax_filter_activites' );
+
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Supprime la version de WordPress des balises meta generator
+ */
+function bnr_remove_wp_version_meta()
+{
+    return '';
+}
+
+add_filter('the_generator', 'bnr_remove_wp_version_meta');
+
+/**
+ * Supprime les numéros de version (?ver=... et ?version=...) des scripts et styles
+ */
+function bnr_remove_wp_version_strings( $src ) {
+    // 1. On supprime le paramètre standard de WordPress (?ver=)
+    if ( strpos( $src, 'ver=' ) ) {
+        $src = remove_query_arg( 'ver', $src );
+    }
+    // 2. On supprime le paramètre alternatif utilisé par certains plugins (?version=)
+    if ( strpos( $src, 'version=' ) ) {
+        $src = remove_query_arg( 'version', $src );
+    }
+    return $src;
+}
+add_filter( 'style_loader_src', 'bnr_remove_wp_version_strings', 9999 );
+add_filter( 'script_loader_src', 'bnr_remove_wp_version_strings', 9999 );
+
+/**
+ * =========================================================================
+ * SÉCURITÉ : Nettoyage avancé de la balise <head>
+ * =========================================================================
+ */
+
+function bnr_cleanup_wp_head() {
+    // 1. Supprimer les liens vers les flux RSS (Posts et Commentaires)
+    remove_action( 'wp_head', 'feed_links', 2 );
+    remove_action( 'wp_head', 'feed_links_extra', 3 );
+
+    // 2. Supprimer les liens de découverte (souvent utilisés par les attaquants pour le XML-RPC)
+    remove_action( 'wp_head', 'rsd_link' );
+    remove_action( 'wp_head', 'wlwmanifest_link' );
+
+    // 3. Supprimer le "shortlink" (lien court généré par WP)
+    remove_action( 'wp_head', 'wp_shortlink_wp_head', 10, 0 );
+
+    // 4. Masquer les liens de l'API REST dans le <head> (l'API fonctionne toujours, elle est juste invisible dans le code source)
+    remove_action( 'wp_head', 'rest_output_link_wp_head', 10 );
+    remove_action( 'wp_head', 'wp_oembed_add_discovery_links', 10 );
+}
+// On accroche cette fonction à l'initialisation de WordPress
+add_action( 'init', 'bnr_cleanup_wp_head' );
+
+/**
+ * =========================================================================
+ * SÉCURITÉ : Masquer la version de Yoast SEO
+ * =========================================================================
+ */
+// Désactive les commentaires HTML générés par Yoast SEO du type ""
+add_filter( 'wpseo_debug_markers', '__return_false' );

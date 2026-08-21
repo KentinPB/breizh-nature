@@ -6,12 +6,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 function bnr_add_admin_menu() {
     add_submenu_page(
-        'edit.php?post_type=activite', // Se place sous le menu du CPT "Activités"
-        'Gestion des réservations',    // Titre de la page web
-        'Réservations',                // Titre dans le menu de gauche
-        'manage_reservations',              // Droits requis
-        'bnr-reservations',            // Slug de l'URL
-        'bnr_render_admin_page'        // Fonction d'affichage
+            'edit.php?post_type=activite', // Se place sous le menu du CPT "Activités"
+            'Gestion des réservations',    // Titre de la page web
+            'Réservations',                // Titre dans le menu de gauche
+            'manage_reservations',         // Droits requis (sur-mesure pour les Gestionnaires et Admins)
+            'bnr-reservations',            // Slug de l'URL
+            'bnr_render_admin_page'        // Fonction d'affichage
     );
 }
 add_action( 'admin_menu', 'bnr_add_admin_menu' );
@@ -21,25 +21,58 @@ add_action( 'admin_menu', 'bnr_add_admin_menu' );
  */
 function bnr_render_admin_page() {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'reservations'; // S'adapte automatiquement à votre préfixe (ex: bn_reservations)
+    $table_name = $wpdb->prefix . 'reservations';
 
     // Étape A : Traitement du formulaire si l'administrateur modifie un statut
     if ( isset( $_POST['action'] ) && $_POST['action'] === 'update_statut' && isset( $_POST['bnr_admin_nonce'] ) ) {
-        // Sécurité exigée par le client : vérification du nonce[cite: 3]
+
+        // Sécurité : vérification du nonce[cite: 12, 14]
         if ( wp_verify_nonce( $_POST['bnr_admin_nonce'], 'update_statut_action' ) ) {
             $resa_id = intval( $_POST['resa_id'] );
             $nouveau_statut = sanitize_text_field( $_POST['nouveau_statut'] );
 
-            // On s'assure que la valeur correspond aux statuts autorisés[cite: 3]
-            if ( in_array( $nouveau_statut, array( 'En attente', 'Acceptée', 'Refusée' ) ) ) {
+            // On s'assure que la valeur correspond aux statuts autorisés (ajout de 'Annulée')[cite: 12]
+            if ( in_array( $nouveau_statut, array( 'En attente', 'Acceptée', 'Refusée', 'Annulée' ) ) ) {
+
+                // 1. Mise à jour en base de données
                 $wpdb->update(
-                    $table_name,
-                    array( 'statut' => $nouveau_statut ), // Ce qu'on met à jour
-                    array( 'id' => $resa_id ),            // La condition (WHERE id = X)
-                    array( '%s' ),
-                    array( '%d' )
+                        $table_name,
+                        array( 'statut' => $nouveau_statut ),
+                        array( 'id' => $resa_id ),
+                        array( '%s' ),
+                        array( '%d' )
                 );
-                echo '<div class="notice notice-success is-dismissible"><p>Statut mis à jour avec succès.</p></div>';
+
+                // 2. Récupération des informations pour l'e-mail (Correction : utilisation de $resa_id)
+                $reservation = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $resa_id ) );
+
+                if ( $reservation ) {
+                    $email_client   = $reservation->email;
+                    $prenom_client  = $reservation->prenom;
+                    $titre_activite = get_the_title( $reservation->activite_id );
+                    $headers        = array('Content-Type: text/plain; charset=UTF-8');
+
+                    // 3. Logique d'envoi selon le nouveau statut
+                    if ( $nouveau_statut === 'Acceptée' ) {
+                        $subject = "Bonne nouvelle : Votre réservation est acceptée !";
+                        $message = "Bonjour $prenom_client,\n\n";
+                        $message .= "Nous avons le plaisir de vous informer que votre réservation pour l'activité '$titre_activite' a été acceptée !\n\n";
+                        $message .= "Nous vous attendons avec impatience. N'hésitez pas à nous contacter si vous avez des questions.\n\n";
+                        $message .= "L'équipe Breizh'Nature.";
+
+                        wp_mail( $email_client, $subject, $message, $headers );
+
+                    } elseif ( $nouveau_statut === 'Refusée' ) {
+                        $subject = "Information concernant votre demande de réservation";
+                        $message = "Bonjour $prenom_client,\n\n";
+                        $message .= "Nous sommes au regret de vous informer que nous ne pouvons malheureusement pas donner suite à votre demande de réservation pour l'activité '$titre_activite' (capacité maximale atteinte ou annulation de l'événement).\n\n";
+                        $message .= "Nous espérons vous retrouver très vite sur une autre de nos sorties nature.\n\n";
+                        $message .= "L'équipe Breizh'Nature.";
+
+                        wp_mail( $email_client, $subject, $message, $headers );
+                    }
+                }
+                echo '<div class="notice notice-success is-dismissible"><p>Statut mis à jour avec succès. Un e-mail a été envoyé au client si nécessaire.</p></div>';
             }
         }
     }
@@ -90,7 +123,7 @@ function bnr_render_admin_page() {
                             </strong>
                         </td>
                         <td>
-                            <!-- Formulaire permettant de modifier le statut[cite: 3] -->
+                            <!-- Formulaire permettant de modifier le statut[cite: 12] -->
                             <form method="POST" style="display:flex; gap:5px; align-items:center;">
                                 <?php wp_nonce_field( 'update_statut_action', 'bnr_admin_nonce' ); ?>
                                 <input type="hidden" name="action" value="update_statut">

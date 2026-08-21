@@ -26,6 +26,7 @@ function bnr_render_reservation_form() {
     if ( isset( $_GET['reservation'] ) ) {
         if ( $_GET['reservation'] == 'success' ) echo '<div style="padding: 10px; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; margin-bottom: 15px;">✅ Votre demande a bien été envoyée.</div>';
         elseif ( $_GET['reservation'] == 'complet' ) echo '<div style="padding: 10px; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; margin-bottom: 15px;">❌ Impossible de réserver : capacité atteinte.</div>';
+        elseif ( $_GET['reservation'] == 'error' ) echo '<div style="padding: 10px; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; margin-bottom: 15px;">❌ Erreur lors de l\'envoi.</div>';
     }
 
     // Blocages métier (Date dépassée ou Plus de places)
@@ -38,7 +39,6 @@ function bnr_render_reservation_form() {
         return ob_get_clean();
     }
 
-    // Le formulaire de réservation (Accessible à tous)
     ?>
     <form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="POST" class="bnr-reservation-form">
         <?php wp_nonce_field( 'bnr_submit_reservation', 'bnr_reservation_nonce' ); ?>
@@ -74,9 +74,8 @@ function bnr_render_reservation_form() {
 }
 add_shortcode( 'bnr_reservation', 'bnr_render_reservation_form' );
 
-
 /**
- * 2. Traitement du formulaire de réservation
+ * 2. Traitement sécurisé de la réservation
  */
 function bnr_process_reservation() {
     if ( ! isset( $_POST['bnr_reservation_nonce'] ) || ! wp_verify_nonce( $_POST['bnr_reservation_nonce'], 'bnr_submit_reservation' ) ) {
@@ -91,209 +90,169 @@ function bnr_process_reservation() {
     $participants = intval( $_POST['participants'] );
     $commentaire  = sanitize_textarea_field( $_POST['commentaire'] );
 
+    if ( empty( $nom ) || empty( $prenom ) || ! is_email( $email ) ) {
+        wp_redirect( add_query_arg( 'reservation', 'error', wp_get_referer() ) ); exit;
+    }
+
     global $wpdb;
     $table_name = $wpdb->prefix . 'reservations';
 
-    // Vérification de la disponibilité avant insertion
-    $places_reservees = (int) $wpdb->get_var( $wpdb->prepare( "SELECT SUM(participants) FROM $table_name WHERE activite_id = %d AND statut = 'Acceptée'", $activite_id ) );
-    $places_max = intval( get_post_meta( $activite_id, '_activite_places', true ) );
-
-    if ( $places_max > 0 && ( $places_reservees + $participants ) > $places_max ) {
-        wp_redirect( add_query_arg( 'reservation', 'complet', wp_get_referer() ) );
-        exit;
-    }
-
-    $wpdb->insert(
+    $inserted = $wpdb->insert(
             $table_name,
             array( 'activite_id' => $activite_id, 'nom' => $nom, 'prenom' => $prenom, 'email' => $email, 'telephone' => $telephone, 'participants' => $participants, 'commentaire' => $commentaire, 'statut' => 'En attente' ),
             array( '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
     );
 
-    wp_redirect( add_query_arg( 'reservation', 'success', wp_get_referer() ) );
+    if ( $inserted ) {
+        $titre_activite = get_the_title( $activite_id );
+        $subject = "Confirmation de réservation : " . $titre_activite;
+        $message = "Bonjour $prenom,\n\nVotre demande pour l'activité '$titre_activite' a bien été enregistrée et est actuellement en attente de validation.\n\nÀ bientôt chez Breizh'Nature !";
+
+        wp_mail( $email, $subject, $message, array('Content-Type: text/plain; charset=UTF-8') );
+
+        wp_redirect( add_query_arg( 'reservation', 'success', wp_get_referer() ) );
+    } else {
+        wp_redirect( add_query_arg( 'reservation', 'error', wp_get_referer() ) );
+    }
     exit;
 }
 add_action( 'admin_post_nopriv_bnr_process_reservation', 'bnr_process_reservation' );
 add_action( 'admin_post_bnr_process_reservation', 'bnr_process_reservation' );
 
-
 /**
- * 3. SHORTCODE : Portail de suivi public pour les visiteurs [bnr_mes_sorties]
+ * 3. SHORTCODE : Formulaire "Gérer mes réservations" (Magic Link)
  */
-function bnr_render_mes_sorties_form() {
+function bnr_render_gestion_reservations_form() {
     ob_start();
 
-    // Message si le visiteur vient de se désister
-    if ( isset( $_GET['annulation'] ) && $_GET['annulation'] === 'success' ) {
-        echo '<div style="padding: 10px; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; margin-bottom: 20px; border-radius: 4px;">✅ Votre désistement a bien été pris en compte.</div>';
+    // Affichage des alertes de succès/erreur de l'annulation
+    if ( isset( $_GET['annulation_statut'] ) ) {
+        if ( $_GET['annulation_statut'] === 'success' ) {
+            echo '<div style="background:#d4edda; color:#155724; padding:20px; margin-bottom:30px; border-radius:8px; border: 1px solid #c3e6cb; text-align:center;">';
+            echo '<h3 style="margin-top:0; color:#155724;">✅ Réservation annulée avec succès</h3>';
+            echo '<p style="margin-bottom:0;">Un e-mail de confirmation vient de vous être envoyé.</p>';
+            echo '</div>';
+        } elseif ( $_GET['annulation_statut'] === 'erreur_token' || $_GET['annulation_statut'] === 'erreur_param' ) {
+            echo '<div style="background:#f8d7da; color:#721c24; padding:20px; margin-bottom:30px; border-radius:8px; border: 1px solid #f5c6cb; text-align:center;">';
+            echo '<h3 style="margin-top:0; color:#721c24;">❌ Action impossible</h3>';
+            echo '<p style="margin-bottom:0;">Le lien d\'annulation est invalide, a expiré, ou la réservation est déjà annulée.</p>';
+            echo '</div>';
+        }
     }
 
-    $email_recherche = isset( $_POST['suivi_email'] ) ? sanitize_email( $_POST['suivi_email'] ) : '';
+    if ( isset( $_POST['bnr_submit_gestion'] ) && wp_verify_nonce( $_POST['bnr_gestion_nonce'], 'bnr_action_gestion' ) ) {
+        $email = sanitize_email( $_POST['email_gestion'] );
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'reservations';
+
+        // Recherche des réservations "En attente" ou "Acceptée"
+        $reservations = $wpdb->get_results( $wpdb->prepare(
+                "SELECT id, activite_id, statut FROM $table_name WHERE email = %s AND statut IN ('En attente', 'Acceptée')",
+                $email
+        ) );
+
+        if ( ! empty( $reservations ) ) {
+            $html_liens = '<ul>';
+            foreach ( $reservations as $resa ) {
+                // GÉNÉRATION SÉCURISÉE DU TOKEN (Expiration 15 minutes)
+                $cancel_token = wp_generate_password( 32, false );
+                set_transient( '_bnr_cancel_token_' . $resa->id, $cancel_token, 15 * MINUTE_IN_SECONDS );
+
+                $url_annulation = add_query_arg(
+                        array( 'action' => 'bnr_cancel_reservation', 'reservation_id' => $resa->id, 'token' => $cancel_token ),
+                        admin_url( 'admin-post.php' )
+                );
+
+                $titre_activite = get_the_title( $resa->activite_id );
+                $html_liens .= '<li><strong>' . esc_html( $titre_activite ) . '</strong> (' . esc_html( $resa->statut ) . ') <br> <a href="' . esc_url( $url_annulation ) . '" style="color:#dc3545; font-weight:bold;">Annuler cette activité</a></li><br>';
+            }
+            $html_liens .= '</ul>';
+
+            $sujet = "Vos réservations Breizh'Nature - Gestion et Annulation";
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+
+            $message_html = "<html><body style='font-family: Arial, sans-serif; color: #333;'>";
+            $message_html .= "<h2 style='color:#2e7d32;'>Gérer vos réservations</h2>";
+            $message_html .= "<p>Bonjour,</p>";
+            $message_html .= "<p>Vous avez demandé à gérer vos réservations sur notre site. Voici vos activités en cours. Cliquez sur le lien rouge pour annuler une réservation spécifique (<strong>Attention, par mesure de sécurité, ces liens ne sont valables que 15 minutes</strong>) :</p>";
+            $message_html .= $html_liens;
+            $message_html .= "<p>À très bientôt,<br>L'équipe Breizh'Nature.</p>";
+            $message_html .= "</body></html>";
+
+            wp_mail( $email, $sujet, $message_html, $headers );
+
+            echo '<div style="background:#d4edda; color:#155724; padding:15px; margin-bottom:15px; border-radius:4px; border: 1px solid #c3e6cb;">Un e-mail contenant vos liens de gestion vient de vous être envoyé. Veuillez vérifier votre boîte de réception (et vos spams).</div>';
+
+        } else {
+            echo '<div style="background:#fff3cd; color:#856404; padding:15px; margin-bottom:15px; border-radius:4px;">Si des réservations actives existent pour cet e-mail, un lien de gestion vient de vous être envoyé.</div>';
+        }
+    }
+
     ?>
-    <div style="background: #f9f9f9; padding: 20px; border: 1px solid #eee; border-radius: 5px; margin-bottom: 30px;">
-        <h3 style="margin-top: 0;">Retrouver mes inscriptions</h3>
+    <div class="bnr-gestion-form" style="max-width: 500px; background: #f9f9f9; padding: 20px; border-radius: 8px;">
         <form method="POST" action="">
-            <label>Saisissez l'adresse e-mail utilisée lors de votre réservation :</label><br>
-            <input type="email" name="suivi_email" value="<?php echo esc_attr( $email_recherche ); ?>" required style="margin-top: 10px; padding: 5px; width: 100%; max-width: 300px;">
-            <button type="submit" class="button" style="margin-top: 10px;">Voir mes sorties</button>
+            <?php wp_nonce_field( 'bnr_action_gestion', 'bnr_gestion_nonce' ); ?>
+            <p>Entrez l'adresse e-mail utilisée lors de vos réservations. Nous vous enverrons un lien sécurisé (valable 15 minutes) pour les gérer ou les annuler.</p>
+            <label style="display:block; margin-bottom: 15px;">
+                <strong>Votre e-mail :</strong><br>
+                <input type="email" name="email_gestion" required style="width: 100%; padding: 8px; margin-top: 5px;">
+            </label>
+            <button type="submit" name="bnr_submit_gestion" style="background:#2e7d32; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer;">Recevoir mon lien d'accès</button>
         </form>
     </div>
     <?php
+    return ob_get_clean();
+}
+add_shortcode( 'bnr_gestion_reservations', 'bnr_render_gestion_reservations_form' );
 
-    if ( ! empty( $email_recherche ) && is_email( $email_recherche ) ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'reservations';
+/**
+ * 4. Traitement sécurisé de l'annulation (Validation du Transient)
+ */
+function bnr_handle_cancel_reservation() {
+    $req_id    = isset( $_GET['reservation_id'] ) ? intval( $_GET['reservation_id'] ) : 0;
+    $req_token = isset( $_GET['token'] ) ? sanitize_text_field( $_GET['token'] ) : '';
 
-        // On récupère toutes les réservations (sauf celles annulées par le client lui-même)
-        $reservations = $wpdb->get_results( $wpdb->prepare(
-                "SELECT * FROM $table WHERE email = %s AND statut != 'Annulée' ORDER BY date_creation DESC",
-                $email_recherche
-        ) );
+    $url_retour = home_url( '/suivi-des-reservations/' );
 
-        if ( empty( $reservations ) ) {
-            echo '<p>Aucune inscription active n\'a été trouvée pour l\'adresse <strong>' . esc_html( $email_recherche ) . '</strong>.</p>';
-        } else {
-            echo '<h3>Vos activités :</h3>';
-            echo '<ul style="list-style:none; padding:0;">';
+    if ( $req_id && $req_token ) {
+        // LECTURE DU TOKEN EPHEMERE
+        $vrai_token = get_transient( '_bnr_cancel_token_' . $req_id );
 
-            foreach ( $reservations as $resa ) {
-                $date_activite = get_post_meta( $resa->activite_id, '_activite_date', true );
-                $titre         = get_the_title( $resa->activite_id );
-                $aujourdhui    = date( 'Y-m-d' );
+        if ( $vrai_token && hash_equals( $vrai_token, $req_token ) ) {
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'reservations';
 
-                // Définition de la couleur de mise en valeur selon le statut
-                $status_color = '#fd7e14'; // Orange : En attente
-                if ( $resa->statut === 'Acceptée' ) $status_color = '#28a745'; // Vert
-                if ( $resa->statut === 'Refusée' ) $status_color = '#dc3545'; // Rouge
+            $reservation = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $req_id ) );
 
-                // La carte HTML de la sortie (avec bordure latérale dynamique)
-                echo '<li style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-left: 5px solid ' . $status_color . '; border-radius: 4px; background: #fff;">';
+            $wpdb->update(
+                    $table_name,
+                    array( 'statut' => 'Annulée' ),
+                    array( 'id' => $req_id ),
+                    array( '%s' ),
+                    array( '%d' )
+            );
 
-                // Titre
-                echo '<h4 style="margin-top: 0; margin-bottom: 15px;"><a href="' . get_permalink( $resa->activite_id ) . '" style="text-decoration:none; color: #333;">' . esc_html( $titre ) . '</a></h4>';
+            // SUPPRESSION DU TOKEN APRES USAGE
+            delete_transient( '_bnr_cancel_token_' . $req_id );
 
-                // Informations clés bien visibles
-                echo '<p style="margin: 5px 0;">📅 <strong>Date de la sortie :</strong> ' . date( 'd/m/Y', strtotime( $date_activite ) ) . '</p>';
-                echo '<p style="margin: 5px 0;">👥 <strong>Places réservées :</strong> ' . esc_html( $resa->participants ) . '</p>';
-                echo '<p style="margin: 5px 0 15px 0;">📌 <strong>Statut de la demande :</strong> <span style="color: ' . $status_color . '; font-weight: bold; padding: 2px 8px; background: rgba(0,0,0,0.03); border-radius: 3px;">' . esc_html( $resa->statut ) . '</span></p>';
+            if ( $reservation ) {
+                $titre_activite = get_the_title( $reservation->activite_id );
+                $subject = "Annulation confirmée : " . $titre_activite;
+                $message = "Bonjour " . $reservation->prenom . ",\n\nNous vous confirmons que votre réservation pour l'activité '$titre_activite' a bien été annulée.\n\nEn espérant vous revoir bientôt chez Breizh'Nature !";
 
-                // LOGIQUE D'AFFICHAGE DU BOUTON D'ANNULATION
-                if ( $resa->statut === 'Refusée' ) {
-                    // Si refusée, pas de bouton
-                    echo '<span style="display:inline-block; color: #dc3545; font-size: 13px; font-weight:bold; padding: 8px; background: #f8d7da; border-radius: 4px;">❌ Cette demande a été refusée par l\'association.</span>';
-                } elseif ( $date_activite >= $aujourdhui ) {
-                    // Si acceptée ou en attente et que la date n'est pas passée, on affiche le bouton
-                    ?>
-                    <form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="POST" style="margin-top: 10px;">
-                        <?php wp_nonce_field( 'bnr_cancel_public_action', 'bnr_cancel_public_nonce' ); ?>
-                        <input type="hidden" name="action" value="bnr_cancel_public_reservation">
-                        <input type="hidden" name="reservation_id" value="<?php echo esc_attr( $resa->id ); ?>">
-                        <input type="hidden" name="email" value="<?php echo esc_attr( $email_recherche ); ?>">
-                        <button type="submit" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 3px; cursor: pointer; font-size: 13px;" onclick="return confirm('Êtes-vous sûr de vouloir vous désister pour cette inscription précise ?');">Annuler mon inscription</button>
-                    </form>
-                    <?php
-                } else {
-                    // Si la date de l'activité est passée
-                    echo '<span style="display:inline-block; color: #6c757d; font-size: 13px; font-weight:bold; padding: 8px; background: #e2e3e5; border-radius: 4px;">🕒 L\'activité est passée.</span>';
-                }
-
-                echo '</li>';
+                wp_mail( $reservation->email, $subject, $message, array('Content-Type: text/plain; charset=UTF-8') );
             }
-            echo '</ul>';
+
+            wp_redirect( add_query_arg( 'annulation_statut', 'success', $url_retour ) );
+            exit;
+        } else {
+            wp_redirect( add_query_arg( 'annulation_statut', 'erreur_token', $url_retour ) );
+            exit;
         }
+    } else {
+        wp_redirect( add_query_arg( 'annulation_statut', 'erreur_param', $url_retour ) );
+        exit;
     }
-    return ob_get_clean();
 }
-add_shortcode( 'bnr_mes_sorties', 'bnr_render_mes_sorties_form' );
-
-
-/**
- * 4. Traitement du Désistement Public (Correction de la Clé Primaire)
- */
-function bnr_cancel_public_reservation() {
-    if ( ! isset( $_POST['bnr_cancel_public_nonce'] ) || ! wp_verify_nonce( $_POST['bnr_cancel_public_nonce'], 'bnr_cancel_public_action' ) ) {
-        wp_die( 'Erreur de sécurité.' );
-    }
-
-    // On récupère le bon ID unique de réservation (et non plus l'activite_id)
-    $reservation_id = isset( $_POST['reservation_id'] ) ? intval( $_POST['reservation_id'] ) : 0;
-    $email          = sanitize_email( $_POST['email'] );
-
-    if ( $reservation_id > 0 && is_email( $email ) ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'reservations';
-
-        // On passe le statut à "Annulée" de manière ultra ciblée sur cette ligne SQL précise
-        $wpdb->update(
-                $table,
-                array( 'statut' => 'Annulée' ),
-                array( 'id' => $reservation_id, 'email' => $email ), // Double condition de sécurité
-                array( '%s' ),
-                array( '%d', '%s' )
-        );
-    }
-
-    // On redirige vers la même page en ajoutant le message de succès
-    wp_redirect( add_query_arg( 'annulation', 'success', wp_get_referer() ) );
-    exit;
-}
-add_action( 'admin_post_nopriv_bnr_cancel_public_reservation', 'bnr_cancel_public_reservation' );
-add_action( 'admin_post_bnr_cancel_public_reservation', 'bnr_cancel_public_reservation' );
-
-
-/**
- * 5. SHORTCODE : Tableau de bord des réservations (Front-end) pour les administrateurs
- */
-function bnr_render_admin_tracking_frontend() {
-    if ( ! current_user_can( 'manage_reservations' ) ) {
-        return '<p>Accès strictement réservé aux gestionnaires de l\'association.</p>';
-    }
-
-    global $wpdb;
-    $table = $wpdb->prefix . 'reservations';
-    $reservations = $wpdb->get_results( "SELECT * FROM $table ORDER BY date_creation DESC LIMIT 50" );
-
-    ob_start();
-    ?>
-    <div class="bnr-admin-tracking">
-        <h2>Tableau de bord : Suivi des réservations</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
-            <thead>
-            <tr style="background: #f1f1f1; text-align: left;">
-                <th style="padding: 10px; border: 1px solid #ccc;">Activité</th>
-                <th style="padding: 10px; border: 1px solid #ccc;">Inscrit</th>
-                <th style="padding: 10px; border: 1px solid #ccc;">Places</th>
-                <th style="padding: 10px; border: 1px solid #ccc;">Statut</th>
-            </tr>
-            </thead>
-            <tbody>
-            <?php foreach ( $reservations as $resa ) : ?>
-                <tr>
-                    <td style="padding: 10px; border: 1px solid #ccc;">
-                        <strong><?php echo get_the_title( $resa->activite_id ); ?></strong>
-                    </td>
-                    <td style="padding: 10px; border: 1px solid #ccc;">
-                        <?php echo esc_html( $resa->prenom . ' ' . $resa->nom ); ?><br>
-                        <a href="mailto:<?php echo esc_attr( $resa->email ); ?>"><?php echo esc_html( $resa->email ); ?></a><br>
-                        <small><?php echo esc_html( $resa->telephone ); ?></small>
-                    </td>
-                    <td style="padding: 10px; border: 1px solid #ccc; text-align:center;">
-                        <?php echo esc_html( $resa->participants ); ?>
-                    </td>
-                    <td style="padding: 10px; border: 1px solid #ccc;">
-                        <?php
-                        $color = '#333';
-                        if ( $resa->statut === 'Acceptée' ) $color = '#28a745';
-                        if ( $resa->statut === 'Annulée' ) $color = '#dc3545';
-                        if ( $resa->statut === 'En attente' ) $color = '#fd7e14';
-                        ?>
-                        <span style="font-weight:bold; color:<?php echo $color; ?>"><?php echo esc_html( $resa->statut ); ?></span>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-    <?php
-    return ob_get_clean();
-}
-add_shortcode( 'bnr_suivi_admin', 'bnr_render_admin_tracking_frontend' );
+add_action( 'admin_post_nopriv_bnr_cancel_reservation', 'bnr_handle_cancel_reservation' );
+add_action( 'admin_post_bnr_cancel_reservation', 'bnr_handle_cancel_reservation' );
