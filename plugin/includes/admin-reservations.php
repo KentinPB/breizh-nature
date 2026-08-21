@@ -20,6 +20,11 @@ add_action( 'admin_menu', 'bnr_add_admin_menu' );
  * 2. Affichage de la page et traitement des mises à jour de statut
  */
 function bnr_render_admin_page() {
+    // Vérification de sécurité : Seul ceux qui ont la capacité 'manage_reservations' peuvent voir ceci
+    if ( ! current_user_can( 'manage_reservations' ) ) {
+        wp_die( 'Accès refusé. Vous n\'avez pas les droits nécessaires.' );
+    }
+
     global $wpdb;
     $table_name = $wpdb->prefix . 'reservations';
 

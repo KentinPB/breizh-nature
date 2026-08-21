@@ -26,12 +26,13 @@ function bnr_register_cpt_activite() {
         'show_in_menu'       => true,
         'query_var'          => true,
         'rewrite'            => array( 'slug' => 'activites' ),
-        'capability_type'    => 'post',
+        'capability_type'    => 'post', // Utilise les droits de base des articles
+        'map_meta_cap'       => true,   // Indispensable pour mapper les droits correctement
         'has_archive'        => true,
         'hierarchical'       => false,
         'menu_position'      => 5,
         'menu_icon'          => 'dashicons-location-alt',
-        'supports'           => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
+        'supports'           => array( 'title', 'editor', 'thumbnail', 'excerpt', 'custom-fields' ),
         'show_in_rest'       => true,
     );
     register_post_type( 'activite', $args );
@@ -48,6 +49,12 @@ function bnr_register_taxonomies() {
         'show_admin_column' => true,
         'rewrite'           => array( 'slug' => 'type-activite' ),
         'show_in_rest'      => true,
+        'capabilities'      => array(
+            'manage_terms' => 'edit_posts',
+            'edit_terms'   => 'edit_posts',
+            'delete_terms' => 'edit_posts',
+            'assign_terms' => 'edit_posts',
+        ),
     );
     register_taxonomy( 'type_activite', array( 'activite' ), $args_type );
 
@@ -59,6 +66,12 @@ function bnr_register_taxonomies() {
         'show_admin_column' => true,
         'rewrite'           => array( 'slug' => 'niveau' ),
         'show_in_rest'      => true,
+        'capabilities'      => array(
+            'manage_terms' => 'edit_posts',
+            'edit_terms'   => 'edit_posts',
+            'delete_terms' => 'edit_posts',
+            'assign_terms' => 'edit_posts',
+        ),
     );
     register_taxonomy( 'niveau_difficulte', array( 'activite' ), $args_niveau );
 }

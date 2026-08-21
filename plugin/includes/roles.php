@@ -32,3 +32,18 @@ function bnr_register_custom_roles() {
 }
 // Le hook 'admin_init' s'assure que les rôles sont vérifiés et créés au chargement de l'administration
 add_action( 'admin_init', 'bnr_register_custom_roles' );
+add_action('admin_menu', function () {
+    // On ne vérifie l'accès que si l'utilisateur est bien "Gestionnaire"
+    if ( current_user_can('gestionnaire') && !current_user_can('administrator') ) {
+
+        // Supprimer les menus sensibles
+        remove_menu_page('tools.php');        // Outils
+        remove_menu_page('options-general.php'); // Réglages
+        remove_menu_page('plugins.php');      // Extensions
+        remove_menu_page('themes.php');       // Apparence
+        remove_menu_page('users.php');        // Utilisateurs
+
+        // Si vous voulez aussi masquer le tableau de bord principal
+        // remove_menu_page('index.php');
+    }
+});

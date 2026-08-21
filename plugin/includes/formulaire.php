@@ -75,24 +75,53 @@ function bnr_render_reservation_form() {
 add_shortcode( 'bnr_reservation', 'bnr_render_reservation_form' );
 
 /**
- * 2. Traitement sécurisé de la réservation
+ * 2. Traitement sécurisé de la réservation avec REGEX
  */
 function bnr_process_reservation() {
+    // Vérification de sécurité CSRF[cite: 3]
     if ( ! isset( $_POST['bnr_reservation_nonce'] ) || ! wp_verify_nonce( $_POST['bnr_reservation_nonce'], 'bnr_submit_reservation' ) ) {
         wp_die( 'Erreur de sécurité.' );
     }
 
     $activite_id  = isset( $_POST['activite_id'] ) ? intval( $_POST['activite_id'] ) : 0;
-    $nom          = sanitize_text_field( $_POST['nom'] );
-    $prenom       = sanitize_text_field( $_POST['prenom'] );
-    $email        = sanitize_email( $_POST['email'] );
-    $telephone    = sanitize_text_field( $_POST['telephone'] );
-    $participants = intval( $_POST['participants'] );
-    $commentaire  = sanitize_textarea_field( $_POST['commentaire'] );
 
-    if ( empty( $nom ) || empty( $prenom ) || ! is_email( $email ) ) {
-        wp_redirect( add_query_arg( 'reservation', 'error', wp_get_referer() ) ); exit;
+    // Nettoyage de base[cite: 3]
+    $nom          = sanitize_text_field( wp_unslash( $_POST['nom'] ) );
+    $prenom       = sanitize_text_field( wp_unslash( $_POST['prenom'] ) );
+    $email        = sanitize_email( wp_unslash( $_POST['email'] ) );
+    $telephone    = sanitize_text_field( wp_unslash( $_POST['telephone'] ) );
+    $participants = intval( $_POST['participants'] );
+    $commentaire  = sanitize_textarea_field( wp_unslash( $_POST['commentaire'] ) );
+
+    // --- DÉBUT DES FILTRES REGEX ---
+    $erreurs = false;
+
+    // Validation Nom et Prénom (lettres, espaces, tirets, accents uniquement)
+    $regex_nom = '/^[a-zA-ZÀ-ÿ\s\-\']+$/';
+    if ( empty( $nom ) || ! preg_match( $regex_nom, $nom ) ) {
+        $erreurs = true;
     }
+    if ( empty( $prenom ) || ! preg_match( $regex_nom, $prenom ) ) {
+        $erreurs = true;
+    }
+
+    // Validation Téléphone (formats français : 0612345678, 06 12 34 56 78, +33...)
+    $regex_tel = '/^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/';
+    if ( empty( $telephone ) || ! preg_match( $regex_tel, $telephone ) ) {
+        $erreurs = true;
+    }
+
+    // Validation Email stricte
+    if ( empty( $email ) || ! is_email( $email ) ) {
+        $erreurs = true;
+    }
+
+    // Si une regex échoue, on bloque tout et on redirige avec une erreur
+    if ( $erreurs ) {
+        wp_redirect( add_query_arg( 'reservation', 'error', wp_get_referer() ) );
+        exit;
+    }
+    // --- FIN DES FILTRES REGEX ---
 
     global $wpdb;
     $table_name = $wpdb->prefix . 'reservations';

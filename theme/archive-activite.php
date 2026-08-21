@@ -73,13 +73,10 @@ get_header(); ?>
                 $args['tax_query'][] = array( 'taxonomy' => 'niveau_difficulte', 'field' => 'slug', 'terms' => sanitize_text_field( $_GET['niveau'] ) );
             }
 
-            // NOUVELLE LOGIQUE DE FILTRAGE PAR DATE ET STATUT
             $aujourdhui = date('Y-m-d');
             if ( ! empty( $_GET['date_activite'] ) ) {
-                // Recherche stricte sur une date donnée
                 $args['meta_query'][] = array( 'key' => '_activite_date', 'value' => sanitize_text_field( $_GET['date_activite'] ), 'compare' => '>=', 'type' => 'DATE' );
             } elseif ( empty( $_GET['afficher_terminees'] ) ) {
-                // Par défaut (case NON cochée) : on ne montre que les activités à venir
                 $args['meta_query'][] = array( 'key' => '_activite_date', 'value' => $aujourdhui, 'compare' => '>=', 'type' => 'DATE' );
             }
 
@@ -118,50 +115,57 @@ get_header(); ?>
                         $badge_text  = 'Complet';
                         $badge_color = '#fd7e14';
                     }
-
-                    // VÉRIFICATION : Le visiteur actuel est-il inscrit ?
-                    $est_inscrit = false;
-                    if ( is_user_logged_in() ) {
-                        $current_user = wp_get_current_user();
-                        $inscription = $wpdb->get_var( $wpdb->prepare(
-                                "SELECT id FROM $table_reservations WHERE activite_id = %d AND email = %s AND statut IN ('Acceptée', 'En attente')",
-                                get_the_ID(), $current_user->user_email
-                        ) );
-                        if ( $inscription ) { $est_inscrit = true; }
-                    }
                     ?>
 
-                    <article id="post-<?php the_ID(); ?>" <?php post_class('activite-card'); ?> style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; position: relative;">
+                    <article id="post-<?php the_ID(); ?>" <?php post_class('activite-card'); ?>>
 
-                    <span style="position: absolute; top: 15px; right: 15px; background-color: <?php echo esc_attr( $badge_color ); ?>; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 1;">
-                        <?php echo esc_html( $badge_text ); ?>
-                    </span>
+                        <!-- L'IMAGE ET SON BADGE INTÉGRÉ -->
+                        <div class="activite-card-image">
 
-                        <h2 class="activite-title" style="padding-right: 120px;"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
+                            <!-- LE BADGE -->
+                            <span class="activite-badge" style="background-color: <?php echo esc_attr( $badge_color ); ?>;">
+            <?php echo esc_html( $badge_text ); ?>
+        </span>
 
-                        <div class="activite-meta-preview">
-                            <?php
-                            echo '<span>🏷️ ' . strip_tags( get_the_term_list( get_the_ID(), 'type_activite', '', ', ' ) ) . '</span> | ';
-                            echo '<span>⭐ ' . strip_tags( get_the_term_list( get_the_ID(), 'niveau_difficulte', '', ', ' ) ) . '</span><br>';
-                            ?>
-                            <?php if ( $lieu ) : ?><span>📍 <?php echo esc_html( $lieu ); ?></span><?php endif; ?>
-                            <?php if ( $tarif ) : ?><span>💶 <?php echo esc_html( $tarif ); ?> €</span><?php endif; ?>
-
-                            <br><br>
-                            <?php if ( $date_debut ) : ?>
-                                <span>📅 <strong>Début :</strong> <?php echo date( 'd/m/Y', strtotime( $date_debut ) ); ?> à <?php echo esc_html( $heure_debut ); ?></span><br>
-                            <?php endif; ?>
-                            <?php if ( $date_limite ) : ?>
-                                <span>⏳ <strong>Inscription avant le :</strong> <?php echo date( 'd/m/Y', strtotime( $date_limite ) ); ?></span><br>
-                            <?php endif; ?>
-                            <?php if ( $places_max ) : ?>
-                                <span>👥 <strong>Places occupées :</strong> <?php echo $places_reservees; ?> / <?php echo esc_html( $places_max ); ?></span>
+                            <?php if ( has_post_thumbnail() ) : ?>
+                                <a href="<?php the_permalink(); ?>">
+                                    <?php the_post_thumbnail( 'medium' ); ?>
+                                </a>
+                            <?php else : ?>
+                                <a href="<?php the_permalink(); ?>" style="display:flex; width:100%; height:100%; align-items:center; justify-content:center; text-decoration:none;">
+                                    <span style="font-size: 4rem;">🌿</span>
+                                </a>
                             <?php endif; ?>
                         </div>
 
-                        <div class="activite-summary" style="margin-top: 15px;">
-                            <?php the_excerpt(); ?>
-                            <a href="<?php the_permalink(); ?>" class="btn-readmore">Voir les détails</a>
+                        <!-- LE CONTENU -->
+                        <div class="activite-card-content">
+                            <h2 class="activite-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
+
+                            <div class="activite-meta-preview">
+                                <?php
+                                echo '<span>🏷️ ' . strip_tags( get_the_term_list( get_the_ID(), 'type_activite', '', ', ' ) ) . '</span> | ';
+                                echo '<span>⭐ ' . strip_tags( get_the_term_list( get_the_ID(), 'niveau_difficulte', '', ', ' ) ) . '</span><br>';
+                                ?>
+                                <?php if ( $lieu ) : ?><span>📍 <?php echo esc_html( $lieu ); ?></span><?php endif; ?>
+                                <?php if ( $tarif ) : ?><span>💶 <?php echo esc_html( $tarif ); ?> €</span><?php endif; ?>
+
+                                <br><br>
+                                <?php if ( $date_debut ) : ?>
+                                    <span>📅 <strong>Début :</strong> <?php echo date( 'd/m/Y', strtotime( $date_debut ) ); ?> à <?php echo esc_html( $heure_debut ); ?></span><br>
+                                <?php endif; ?>
+                                <?php if ( $date_limite ) : ?>
+                                    <span>⏳ <strong>Inscription avant le :</strong> <?php echo date( 'd/m/Y', strtotime( $date_limite ) ); ?></span><br>
+                                <?php endif; ?>
+                                <?php if ( $places_max ) : ?>
+                                    <span>👥 <strong>Places occupées :</strong> <?php echo $places_reservees; ?> / <?php echo esc_html( $places_max ); ?></span>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="activite-summary">
+                                <div class="activite-excerpt"><?php the_excerpt(); ?></div>
+                                <a href="<?php the_permalink(); ?>" class="btn-readmore">Voir les détails</a>
+                            </div>
                         </div>
                     </article>
 
