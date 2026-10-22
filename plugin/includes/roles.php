@@ -30,11 +30,15 @@ function bnr_register_custom_roles() {
         )
     );
 }
-// Le hook 'admin_init' s'assure que les rôles sont vérifiés et créés au chargement de l'administration
-add_action( 'admin_init', 'bnr_register_custom_roles' );
+// Les rôles sont enregistrés en base par WordPress : il suffit de les créer une fois,
+// à l'activation du plugin (voir register_activation_hook dans le fichier principal),
+// et non à chaque chargement de l'administration.
+
 add_action('admin_menu', function () {
-    // On ne vérifie l'accès que si l'utilisateur est bien "Gestionnaire"
-    if ( current_user_can('gestionnaire') && !current_user_can('administrator') ) {
+    // On teste une CAPACITÉ, pas un nom de rôle : current_user_can() est prévu pour
+    // les capacités. Toute personne qui gère les réservations sans pouvoir administrer
+    // le site (pas de 'manage_options') voit une administration simplifiée.
+    if ( current_user_can( 'manage_reservations' ) && ! current_user_can( 'manage_options' ) ) {
 
         // Supprimer les menus sensibles
         remove_menu_page('tools.php');        // Outils

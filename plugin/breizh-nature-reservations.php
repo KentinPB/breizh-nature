@@ -31,5 +31,7 @@ if ( defined( 'BNR_ENABLE_SEEDER' ) && BNR_ENABLE_SEEDER ) {
     require_once BNR_PLUGIN_DIR . 'includes/seeder.php';
 }
 
-// 2. Hook d'activation (Appelle la fonction située dans base-de-donnees.php)
+// 2. Hooks d'activation : création de la table (base-de-donnees.php)
+//    puis création du rôle Gestionnaire et de la capacité manage_reservations (roles.php).
 register_activation_hook( __FILE__, 'bnr_activate_plugin' );
+register_activation_hook( __FILE__, 'bnr_register_custom_roles' );
