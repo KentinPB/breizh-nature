@@ -261,12 +261,11 @@ function bnr_render_gestion_reservations_form() {
             $message_html .= "</body></html>";
 
             wp_mail( $email, $sujet, $message_html, $headers );
-
-            echo '<div style="background:#d4edda; color:#155724; padding:15px; margin-bottom:15px; border-radius:4px; border: 1px solid #c3e6cb;">Un e-mail contenant vos liens de gestion vient de vous être envoyé. Veuillez vérifier votre boîte de réception (et vos spams).</div>';
-
-        } else {
-            echo '<div style="background:#fff3cd; color:#856404; padding:15px; margin-bottom:15px; border-radius:4px;">Si des réservations actives existent pour cet e-mail, un lien de gestion vient de vous être envoyé.</div>';
         }
+
+        // Message identique que l'adresse ait des réservations ou non : sinon, un
+        // visiteur pourrait tester des adresses et savoir qui a réservé (énumération).
+        echo '<div style="background:#d4edda; color:#155724; padding:15px; margin-bottom:15px; border-radius:4px; border: 1px solid #c3e6cb;">Si des réservations actives existent pour cet e-mail, un lien de gestion vient de vous être envoyé. Pensez à vérifier vos spams.</div>';
     }
 
     ?>
