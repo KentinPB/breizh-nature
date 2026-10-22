@@ -24,8 +24,12 @@ require_once BNR_PLUGIN_DIR . 'includes/dashboard.php';
 require_once BNR_PLUGIN_DIR . 'includes/roles.php';
 require_once BNR_PLUGIN_DIR . 'includes/api-rest.php';
 
-// Script d'injection de test (À commenter une fois terminé)
-require_once BNR_PLUGIN_DIR . 'includes/seeder.php';
+// Script d'injection de données de test : chargé UNIQUEMENT en développement.
+// Pour l'activer, ajouter dans wp-config.php : define( 'BNR_ENABLE_SEEDER', true );
+// En production, la constante n'existe pas : aucune donnée fictive ne peut être injectée.
+if ( defined( 'BNR_ENABLE_SEEDER' ) && BNR_ENABLE_SEEDER ) {
+    require_once BNR_PLUGIN_DIR . 'includes/seeder.php';
+}
 
 // 2. Hook d'activation (Appelle la fonction située dans base-de-donnees.php)
 register_activation_hook( __FILE__, 'bnr_activate_plugin' );
