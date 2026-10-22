@@ -23,8 +23,8 @@ get_header(); ?>
                     <h1 class="entry-title single-activite-title"><?php the_title(); ?></h1>
 
                     <div class="taxonomies-badges">
-                        <span class="badge badge-green">🏷️ <?php echo strip_tags( get_the_term_list( get_the_ID(), 'type_activite', '', ', ' ) ); ?></span>
-                        <span class="badge badge-yellow">⭐ <?php echo strip_tags( get_the_term_list( get_the_ID(), 'niveau_difficulte', '', ', ' ) ); ?></span>
+                        <span class="badge badge-green">🏷️ <?php echo esc_html( wp_strip_all_tags( get_the_term_list( get_the_ID(), 'type_activite', '', ', ' ) ) ); ?></span>
+                        <span class="badge badge-yellow">⭐ <?php echo esc_html( wp_strip_all_tags( get_the_term_list( get_the_ID(), 'niveau_difficulte', '', ', ' ) ) ); ?></span>
                     </div>
                 </header>
 

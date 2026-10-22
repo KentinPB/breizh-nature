@@ -136,8 +136,8 @@ function bnr_ajax_filter_activites() {
 
                     <div class="activite-meta-preview">
                         <?php
-                        echo '<span>🏷️ ' . strip_tags( get_the_term_list( get_the_ID(), 'type_activite', '', ', ' ) ) . '</span> | ';
-                        echo '<span>⭐ ' . strip_tags( get_the_term_list( get_the_ID(), 'niveau_difficulte', '', ', ' ) ) . '</span><br>';
+                        echo '<span>🏷️ ' . esc_html( wp_strip_all_tags( get_the_term_list( get_the_ID(), 'type_activite', '', ', ' ) ) ) . '</span> | ';
+                        echo '<span>⭐ ' . esc_html( wp_strip_all_tags( get_the_term_list( get_the_ID(), 'niveau_difficulte', '', ', ' ) ) ) . '</span><br>';
                         ?>
                         <?php if ( $lieu ) : ?><span>📍 <?php echo esc_html( $lieu ); ?></span><?php endif; ?>
                         <?php if ( $tarif ) : ?><span>💶 <?php echo esc_html( $tarif ); ?> €</span><?php endif; ?>
@@ -150,7 +150,7 @@ function bnr_ajax_filter_activites() {
                             <span>⏳ <strong>Inscription avant le :</strong> <?php echo date( 'd/m/Y', strtotime( $date_limite ) ); ?></span><br>
                         <?php endif; ?>
                         <?php if ( $places_max ) : ?>
-                            <span>👥 <strong>Places occupées :</strong> <?php echo $places_reservees; ?> / <?php echo esc_html( $places_max ); ?></span>
+                            <span>👥 <strong>Places occupées :</strong> <?php echo esc_html( $places_reservees ); ?> / <?php echo esc_html( $places_max ); ?></span>
                         <?php endif; ?>
                     </div>
 
