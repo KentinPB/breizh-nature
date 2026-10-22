@@ -67,6 +67,11 @@ function bnr_render_reservation_form() {
             <label>Commentaire</label><br>
             <textarea name="commentaire" rows="3" style="width:100%;"></textarea>
         </div>
+        <?php // Anti-spam (honeypot) : champ invisible pour un humain, rempli par les robots qui remplissent tout. ?>
+        <div class="bnr-hp" aria-hidden="true" style="position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;">
+            <label for="bnr_site_web">Ne pas remplir ce champ</label>
+            <input type="text" id="bnr_site_web" name="bnr_site_web" value="" tabindex="-1" autocomplete="off">
+        </div>
         <button type="submit" class="button">Envoyer ma demande</button>
     </form>
     <?php
@@ -81,6 +86,14 @@ function bnr_process_reservation() {
     // Vérification de sécurité CSRF
     if ( ! isset( $_POST['bnr_reservation_nonce'] ) || ! wp_verify_nonce( $_POST['bnr_reservation_nonce'], 'bnr_submit_reservation' ) ) {
         wp_die( 'Erreur de sécurité.' );
+    }
+
+    // Anti-spam (honeypot) : un humain ne voit pas ce champ, il reste donc vide.
+    // S'il est rempli, c'est un robot : on simule un succès sans rien enregistrer,
+    // pour ne pas lui indiquer qu'il a été détecté.
+    if ( ! empty( $_POST['bnr_site_web'] ) ) {
+        wp_redirect( add_query_arg( 'reservation', 'success', wp_get_referer() ) );
+        exit;
     }
 
     $activite_id  = isset( $_POST['activite_id'] ) ? intval( $_POST['activite_id'] ) : 0;
