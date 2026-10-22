@@ -31,12 +31,12 @@ function bnr_render_admin_page() {
     // Étape A : Traitement du formulaire si l'administrateur modifie un statut
     if ( isset( $_POST['action'] ) && $_POST['action'] === 'update_statut' && isset( $_POST['bnr_admin_nonce'] ) ) {
 
-        // Sécurité : vérification du nonce[cite: 12, 14]
+        // Sécurité : vérification du nonce
         if ( wp_verify_nonce( $_POST['bnr_admin_nonce'], 'update_statut_action' ) ) {
             $resa_id = intval( $_POST['resa_id'] );
             $nouveau_statut = sanitize_text_field( $_POST['nouveau_statut'] );
 
-            // On s'assure que la valeur correspond aux statuts autorisés (ajout de 'Annulée')[cite: 12]
+            // On s'assure que la valeur correspond aux statuts autorisés (ajout de 'Annulée')
             if ( in_array( $nouveau_statut, array( 'En attente', 'Acceptée', 'Refusée', 'Annulée' ) ) ) {
 
                 // 1. Mise à jour en base de données
@@ -128,7 +128,7 @@ function bnr_render_admin_page() {
                             </strong>
                         </td>
                         <td>
-                            <!-- Formulaire permettant de modifier le statut[cite: 12] -->
+                            <!-- Formulaire permettant de modifier le statut -->
                             <form method="POST" style="display:flex; gap:5px; align-items:center;">
                                 <?php wp_nonce_field( 'update_statut_action', 'bnr_admin_nonce' ); ?>
                                 <input type="hidden" name="action" value="update_statut">

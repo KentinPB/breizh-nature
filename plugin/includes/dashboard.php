@@ -40,10 +40,10 @@ function bnr_render_dashboard_widget() {
     $query_avenir = new WP_Query( $args_avenir );
     $activites_avenir = $query_avenir->found_posts;
 
-    // Statistique 3 : Réservations en attente[cite: 2]
+    // Statistique 3 : Réservations en attente
     $resa_attente = $wpdb->get_var( "SELECT COUNT(*) FROM $table_name WHERE statut = 'En attente'" );
 
-    // Statistique 4 : Réservations acceptées[cite: 2]
+    // Statistique 4 : Réservations acceptées
     $resa_acceptees = $wpdb->get_var( "SELECT COUNT(*) FROM $table_name WHERE statut = 'Acceptée'" );
 
     // NOUVEAU - Statistique 5 : Réservations refusées (par l'admin) ou annulées (par le client)

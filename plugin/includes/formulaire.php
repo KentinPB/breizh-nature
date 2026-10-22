@@ -78,14 +78,14 @@ add_shortcode( 'bnr_reservation', 'bnr_render_reservation_form' );
  * 2. Traitement sécurisé de la réservation avec REGEX
  */
 function bnr_process_reservation() {
-    // Vérification de sécurité CSRF[cite: 3]
+    // Vérification de sécurité CSRF
     if ( ! isset( $_POST['bnr_reservation_nonce'] ) || ! wp_verify_nonce( $_POST['bnr_reservation_nonce'], 'bnr_submit_reservation' ) ) {
         wp_die( 'Erreur de sécurité.' );
     }
 
     $activite_id  = isset( $_POST['activite_id'] ) ? intval( $_POST['activite_id'] ) : 0;
 
-    // Nettoyage de base[cite: 3]
+    // Nettoyage de base
     $nom          = sanitize_text_field( wp_unslash( $_POST['nom'] ) );
     $prenom       = sanitize_text_field( wp_unslash( $_POST['prenom'] ) );
     $email        = sanitize_email( wp_unslash( $_POST['email'] ) );
