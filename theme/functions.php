@@ -1,15 +1,27 @@
 <?php
+// Sécurité : empêcher l'appel direct du fichier, avant toute autre instruction.
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 /**
  * Enregistrement des scripts et styles
  */
 function breizh_nature_scripts() {
-    wp_enqueue_style( 'breizh-nature-style', get_stylesheet_uri() );
+    // Version du thème (en-tête de style.css) : change à chaque version, ce qui force
+    // le navigateur à recharger les fichiers modifiés au lieu de garder l'ancien en cache.
+    $version_theme = wp_get_theme()->get( 'Version' );
+
+    wp_enqueue_style( 'breizh-nature-style', get_stylesheet_uri(), array(), $version_theme );
     wp_enqueue_script( 'breizh-ajax-filter', get_template_directory_uri() . '/asset/js/ajax-filter.js', array(), '1.1', true );
 
     wp_localize_script( 'breizh-ajax-filter', 'breizh_ajax', array(
             'ajax_url' => admin_url( 'admin-ajax.php' ),
             'nonce'    => wp_create_nonce( 'breizh_filter_nonce' )
     ));
+
+    // Script de la bannière cookies (RGPD) : chargé ici, dans le hook prévu pour les scripts.
+    wp_enqueue_script( 'breizh-cookies', get_template_directory_uri() . '/asset/js/cookies.js', array(), '1.0', true );
 }
 add_action( 'wp_enqueue_scripts', 'breizh_nature_scripts' );
 
@@ -162,10 +174,6 @@ add_action( 'wp_ajax_filter_activites', 'bnr_ajax_filter_activites' );
 add_action( 'wp_ajax_nopriv_filter_activites', 'bnr_ajax_filter_activites' );
 
 
-if (!defined('ABSPATH')) {
-    exit;
-}
-
 /**
  * Supprime la version de WordPress des balises meta generator
  */
@@ -176,14 +184,14 @@ function bnr_remove_wp_version_meta()
 add_filter('the_generator', 'bnr_remove_wp_version_meta');
 
 /**
- * Supprime les numéros de version (?ver=... et ?version=...) des scripts et styles
+ * Retire le paramètre ?ver= UNIQUEMENT quand il contient la version de WordPress
+ * (information utile à un attaquant). Les versions propres au thème ou aux extensions
+ * sont conservées : elles servent à forcer le rechargement d'un fichier modifié.
  */
 function bnr_remove_wp_version_strings( $src ) {
-    if ( strpos( $src, 'ver=' ) ) {
+    global $wp_version;
+    if ( strpos( $src, 'ver=' . $wp_version ) !== false ) {
         $src = remove_query_arg( 'ver', $src );
-    }
-    if ( strpos( $src, 'version=' ) ) {
-        $src = remove_query_arg( 'version', $src );
     }
     return $src;
 }
@@ -212,6 +220,3 @@ add_action( 'init', 'bnr_cleanup_wp_head' );
  * =========================================================================
  */
 add_filter( 'wpseo_debug_markers', '__return_false' );
-
-// Chargement du script des cookies
-wp_enqueue_script( 'breizh-cookies', get_template_directory_uri() . '/asset/js/cookies.js', array(), '1.0', true );
