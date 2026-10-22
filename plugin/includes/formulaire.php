@@ -26,6 +26,7 @@ function bnr_render_reservation_form() {
     if ( isset( $_GET['reservation'] ) ) {
         if ( $_GET['reservation'] == 'success' ) echo '<div style="padding: 10px; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; margin-bottom: 15px;">✅ Votre demande a bien été envoyée.</div>';
         elseif ( $_GET['reservation'] == 'complet' ) echo '<div style="padding: 10px; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; margin-bottom: 15px;">❌ Impossible de réserver : capacité atteinte.</div>';
+        elseif ( $_GET['reservation'] == 'closed' ) echo '<div style="padding: 10px; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; margin-bottom: 15px;">❌ Impossible de réserver : la date limite d\'inscription est dépassée.</div>';
         elseif ( $_GET['reservation'] == 'error' ) echo '<div style="padding: 10px; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; margin-bottom: 15px;">❌ Erreur lors de l\'envoi.</div>';
     }
 
@@ -134,6 +135,44 @@ function bnr_process_reservation() {
         wp_redirect( add_query_arg( 'reservation', 'error', wp_get_referer() ) );
         exit;
     }
+
+    // --- CONTRÔLES MÉTIER CÔTÉ SERVEUR ---
+    // Le formulaire masque déjà ces cas à l'affichage, mais une requête peut être
+    // envoyée directement à admin-post.php sans passer par la page : on revérifie tout.
+
+    // 1. L'activité doit exister, être du type « activite » et être publiée.
+    if ( ! $activite_id || get_post_type( $activite_id ) !== 'activite' || get_post_status( $activite_id ) !== 'publish' ) {
+        wp_redirect( add_query_arg( 'reservation', 'error', wp_get_referer() ) );
+        exit;
+    }
+
+    // 2. Au moins un participant (l'attribut HTML min="1" se contourne facilement).
+    if ( $participants < 1 ) {
+        wp_redirect( add_query_arg( 'reservation', 'error', wp_get_referer() ) );
+        exit;
+    }
+
+    // 3. Date limite d'inscription.
+    $date_limite = get_post_meta( $activite_id, '_activite_date_limite', true );
+    if ( ! empty( $date_limite ) && date( 'Y-m-d' ) > $date_limite ) {
+        wp_redirect( add_query_arg( 'reservation', 'closed', wp_get_referer() ) );
+        exit;
+    }
+
+    // 4. Places restantes : même calcul qu'à l'affichage (réservations acceptées).
+    $places_max = intval( get_post_meta( $activite_id, '_activite_places', true ) );
+    if ( $places_max > 0 ) {
+        global $wpdb;
+        $places_reservees = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT SUM(participants) FROM {$wpdb->prefix}reservations WHERE activite_id = %d AND statut = 'Acceptée'",
+                $activite_id
+        ) );
+        if ( $participants > $places_max - $places_reservees ) {
+            wp_redirect( add_query_arg( 'reservation', 'complet', wp_get_referer() ) );
+            exit;
+        }
+    }
+    // --- FIN DES CONTRÔLES MÉTIER ---
     // --- FIN DES FILTRES REGEX ---
 
     global $wpdb;
