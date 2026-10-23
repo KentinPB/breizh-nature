@@ -15,18 +15,20 @@ L'extension **Breizh'Nature Réservations** est le cœur métier du portail des 
 * **Système de Réservation Public :**
   * Formulaire de réservation sécurisé via le shortcode `[bnr_reservation]`.
   * Validation stricte des données côté serveur (Regex pour nom, téléphone, email).
-  * Gestion des capacités (places restantes) et des dates limites d'inscription.
+  * Revérification côté serveur à l'enregistrement : activité publiée, au moins un participant, date limite non dépassée, places restantes suffisantes.
+  * Champ « piège » invisible (honeypot) contre les robots de spam.
 * **Gestion des Réservations (Back-office) :**
   * Interface d'administration dédiée pour lister les demandes.
   * Modification des statuts (En attente, Acceptée, Refusée, Annulée) avec envoi automatique d'e-mails transactionnels.
 * **Suivi pour les Utilisateurs (Magic Link) :**
   * Système de gestion sans compte utilisateur via le shortcode `[bnr_gestion_reservations]`.
-  * Génération de liens éphémères (valables 15 minutes) envoyés par e-mail pour annuler une réservation.
+  * Génération de liens éphémères (valables 15 minutes, à usage unique) envoyés par e-mail pour annuler une réservation.
+  * Message identique que l'adresse ait des réservations ou non, pour ne pas révéler quelles adresses sont inscrites.
 * **API REST Personnalisée :**
   * Endpoints publics pour exposer le catalogue : `/wp-json/breizhnature/v1/activites` et `/wp-json/breizhnature/v1/categories`.
 * **Tableau de bord & Rôles :**
   * Widget de statistiques sur le tableau de bord WordPress (activités à venir, réservations en attente/acceptées/annulées).
-  * Création d'un rôle `gestionnaire` restreint pour l'administration quotidienne.
+  * Création d'un rôle `gestionnaire` restreint pour l'administration quotidienne, avec la seule capacité `manage_reservations` (pas d'accès aux réglages du site).
 
 ## Architecture Technique
 
@@ -40,13 +42,14 @@ Le plugin est découpé de manière modulaire pour une maintenance optimale :
 * `includes/dashboard.php` : Widget de statistiques.
 * `includes/roles.php` : Gestion des permissions.
 * `includes/api-rest.php` : Définition des routes de l'API REST.
-* `includes/seeder.php` : Script d'injection de données de test (à désactiver en production).
+* `includes/seeder.php` : Script d'injection de données de test, chargé uniquement si la constante `BNR_ENABLE_SEEDER` est définie.
 
 ## Installation
 
 1. Uploadez le dossier `breizh-nature-reservations` dans le répertoire `/wp-content/plugins/` de votre installation WordPress.
 2. Activez l'extension depuis le menu **Extensions** de WordPress.
-3. Lors de l'activation, la table de base de données personnalisée sera automatiquement créée.
+3. Lors de l'activation, la table `{prefixe}reservations`, le rôle `gestionnaire` et la capacité `manage_reservations` sont créés automatiquement.
+4. (Développement uniquement) Pour charger des données de test, ajouter `define( 'BNR_ENABLE_SEEDER', true );` dans `wp-config.php`. Ne jamais définir cette constante en production.
 
 ## Utilisation des Shortcodes
 

@@ -13,8 +13,9 @@ Ce dossier contient le thème WordPress développé entièrement sur-mesure pour
 * **Design Responsive & Moderne :** Interface épurée et fluide (utilisation de Flexbox et CSS Grid), entièrement responsive pour s'adapter aux ordinateurs, tablettes et smartphones.
 * **Bannière de Consentement (RGPD) :** Affichage d'une bannière de gestion des cookies avec options d'acceptation/refus (structure présente dans le `footer.php`).
 * **Performances & Sécurité :**
-  * Nettoyage approfondi de la balise `<head>` (suppression des liens inutiles, balises génératrices de version).
-  * Enqueue propre des scripts et styles via `functions.php`.
+  * Nettoyage approfondi de la balise `<head>` (suppression des liens inutiles et de la version de WordPress, qui renseignerait un attaquant sur les failles connues).
+  * Enqueue propre des scripts et styles via `functions.php` ; la feuille de style porte la version du thème (`?ver=`) pour que les navigateurs rechargent le fichier après une mise à jour.
+  * Sorties échappées (`esc_html`, `esc_attr`, `esc_url`) dans les modèles.
 
 ## Arborescence et Fichiers Clés
 
@@ -26,7 +27,7 @@ Ce dossier contient le thème WordPress développé entièrement sur-mesure pour
 * `single-activite.php` : Modèle de présentation détaillée d'une activité (avec barre latérale d'informations pratiques et appel au plugin de réservation).
 * `page.php` : Modèle générique pour les pages standards institutionnelles (Mentions légales, etc.).
 * `404.php` : Page d'erreur personnalisée incitant l'utilisateur à retourner sur les activités.
-* `asset/js/` : Répertoire contenant les scripts Javascript du thème (`ajax-filter.js` et `cookies.js`). *(Note: Ces fichiers sont gérés séparément).*
+* `asset/js/` : Répertoire contenant les scripts Javascript du thème (`ajax-filter.js` pour le filtrage du catalogue, `cookies.js` pour la bannière de consentement).
 
 ## Prérequis
 * Ce thème est conçu pour fonctionner en tandem avec le plugin métier **Breizh'Nature Réservations** (qui fournit le Custom Post Type `activite`, les taxonomies, et le shortcode de réservation).
